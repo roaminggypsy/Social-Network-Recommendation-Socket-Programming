@@ -27,7 +27,7 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-void query()
+void query(int sockfd)
 {
     cout << "Enter country name: ";
     char country[MAXDATASIZE];
@@ -37,6 +37,22 @@ void query()
     char id[MAXDATASIZE];
     cin >> id;
 
+    if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
+    {
+        perror("send");
+    }
+
+    if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
+    {
+        perror("send");
+    }
+
+    // send country and id to mainserver
+    // cout << "Client has sent User" << id << " and " << country << " to Main Server using TCP" << endl;
+}
+
+int connect()
+{
     // load up address structs
     struct addrinfo hints;
 
@@ -49,7 +65,7 @@ void query()
     if ((status = getaddrinfo("localhost", PORT, &hints, &res)) != 0)
     {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-        return 1;
+        exit(1);
     }
 
     // loop throgh all the reslts and bind to the first we can
@@ -77,53 +93,45 @@ void query()
     if (p == NULL)
     {
         fprintf(stderr, "client: failed to connect\n");
-        return 2;
+        exit(2);
     }
 
     char s[INET6_ADDRSTRLEN];
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
 
     freeaddrinfo(res);
+    return sockfd;
+}
 
-    if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
-    {
-        perror("send");
-    }
+void receive()
+{
+    // receive recommendations
+    // int numbytes;
+    // char buf[MAXDATASIZE];
+    // if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+    //     perror("recv");
+    //     exit(1);
+    // }
 
-    if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
-    {
-        perror("send");
-    }
+    // buf[numbytes] = '\0';
+
+    // printf("client: received '%s'\n", buf);
+
+    // print result
+    // cout << country << " not found" << endl;
+    // cout << "User" << id << " not found" << endl;
+    // cout << "Client has received results from Main Server" << endl;
+    // cout << "RESULT" << " is/are possible friend(s) of User" << id << " in " << country << endl;
 }
 
 int main()
 {
+    int sockfd = connect();
     do
     {
-
-        // receive recommendations
-        // int numbytes;
-        // char buf[MAXDATASIZE];
-        // if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-        //     perror("recv");
-        //     exit(1);
-        // }
-
-        // buf[numbytes] = '\0';
-
-        // printf("client: received '%s'\n", buf);
-
-        close(sockfd);
-
-        // send country and id to mainserver
-        // cout << "Client has sent User" << id << " and " << country << " to Main Server using TCP" << endl;
-
-        // print result
-        // cout << country << " not found" << endl;
-        // cout << "User" << id << " not found" << endl;
-        // cout << "Client has received results from Main Server" << endl;
-        // cout << "RESULT" << " is/are possible friend(s) of User" << id << " in " << country << endl;
+        query(sockfd);
+        receive();
     } while (1);
-
+    close(sockfd);
     return 0;
 }
