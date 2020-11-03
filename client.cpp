@@ -29,26 +29,26 @@ void *get_in_addr(struct sockaddr *sa)
 
 void query(int sockfd)
 {
-    cout << "Enter country name: ";
-    char country[MAXDATASIZE];
-    cin >> country;
+    //     cout << "Enter country name: ";
+    //     char country[MAXDATASIZE];
+    //     cin >> country;
 
-    cout << "Enter user ID: ";
-    char id[MAXDATASIZE];
-    cin >> id;
+    //     cout << "Enter user ID: ";
+    //     char id[MAXDATASIZE];
+    //     cin >> id;
 
-    if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
-    {
-        perror("send");
-    }
+    //     if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
+    //     {
+    //         perror("send");
+    //     }
 
-    if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
-    {
-        perror("send");
-    }
+    //     if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
+    //     {
+    //         perror("send");
+    //     }
 
-    // send country and id to mainserver
-    // cout << "Client has sent User" << id << " and " << country << " to Main Server using TCP" << endl;
+    //     // send country and id to mainserver
+    //     printf("Client has sent User %s and country %s to Main Server using TCP", id, country);
 }
 
 int connect()
@@ -105,23 +105,25 @@ int connect()
 
 void receive()
 {
-    // receive recommendations
+    // // receive recommendations
+    // char res[sizeof(int) + 1];
     // int numbytes;
-    // char buf[MAXDATASIZE];
-    // if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+
+    // if ((numbytes = recv(sockfd, res, sizeof(int), 0)) == -1)
+    // {
     //     perror("recv");
     //     exit(1);
     // }
 
-    // buf[numbytes] = '\0';
+    // res[numbytes] = '\0';
 
     // printf("client: received '%s'\n", buf);
 
-    // print result
     // cout << country << " not found" << endl;
     // cout << "User" << id << " not found" << endl;
     // cout << "Client has received results from Main Server" << endl;
-    // cout << "RESULT" << " is/are possible friend(s) of User" << id << " in " << country << endl;
+    // cout << "RESULT"
+    //      << " is/are possible friend(s) of User" << id << " in " << country << endl;
 }
 
 int main()
@@ -129,8 +131,46 @@ int main()
     int sockfd = connect();
     do
     {
-        query(sockfd);
-        receive();
+        cout << "Enter country name: ";
+        char country[MAXDATASIZE];
+        cin >> country;
+
+        cout << "Enter user ID: ";
+        char id[MAXDATASIZE];
+        cin >> id;
+
+        if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
+        {
+            perror("send");
+        }
+
+        if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
+        {
+            perror("send");
+        }
+
+        // send country and id to mainserver
+        printf("Client has sent User %s and country %s to Main Server using TCP", id, country);
+
+        // receive recommendations
+        char res[sizeof(int) + 1];
+        int numbytes;
+
+        if ((numbytes = recv(sockfd, res, sizeof(int), 0)) == -1)
+        {
+            perror("recv");
+            exit(1);
+        }
+
+        res[numbytes] = '\0';
+
+        printf("client: received '%s'\n", res);
+
+        //cout << country << " not found" << endl;
+        //cout << "User" << id << " not found" << endl;
+        //cout << "Client has received results from Main Server" << endl;
+        //cout << "RESULT"
+        //     << " is/are possible friend(s) of User" << id << " in " << country << endl;
     } while (1);
     close(sockfd);
     return 0;

@@ -15,13 +15,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <vector>
 
 using namespace std;
 
 #define MAINSERVERPORT "32321"
 #define APORT "30321"
+#define NOTFOUND -2
+#define NONE -1
 
-void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>> *adjLists)
+void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs)
 {
     ifstream dataFile;
     dataFile.open("./testcases/testcase1/data1.txt");
@@ -39,11 +42,11 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
                 //cout << node << ": ";
 
                 unordered_set<int> neighbors;
-                (*adjLists)[country][node] = neighbors;
+                (*countryGraphs)[country][node] = neighbors;
                 int neighbor;
                 while (stream >> neighbor)
                 {
-                    (*adjLists)[country][node].insert(neighbor);
+                    (*countryGraphs)[country][node].insert(neighbor);
                     //cout << neighbor << " ";
                 }
 
@@ -53,14 +56,14 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
             {
                 country = line;
                 unordered_map<int, unordered_set<int>> adjList;
-                (*adjLists)[country] = adjList;
+                (*countryGraphs)[country] = adjList;
                 //cout << country << endl;
             }
         }
 
-        // for (auto i : adjLists[country]) {
+        // for (auto i : countryGraphs[country]) {
         //     cout << i.first << ": ";
-        //     for (auto j : adjLists[country][i.first]) {
+        //     for (auto j : countryGraphs[country][i.first]) {
         //         cout << j << "  ";
         //     }
         //     cout << endl;
@@ -159,18 +162,18 @@ int initializeForMainServer(struct addrinfo **res)
     }
 
     *res = p;
-    cout << p << " " << *res;
+    cout << p << " " << *res << endl;
 
     //freeaddrinfo(servinfo);
 
     return sockfd;
 }
 
-void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unordered_set<int>>> adjLists, struct addrinfo *p)
+void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs, struct addrinfo *p)
 {
     cout << p;
     int numbytes;
-    for (auto i : adjLists)
+    for (auto i : *countryGraphs)
     {
         string msg = to_string(0) + i.first;
         if ((numbytes = sendto(sockfd, msg.data(), msg.length(), 0,
@@ -195,39 +198,141 @@ void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unorde
     cout << "The server A has sent a country list to Main Server" << endl;
 }
 
-void listen(int sockfd)
+int recommend(unordered_map<int, unordered_set<int>> graph, int u)
+{
+    if (graph.count(u) == 0)
+    {
+        return NOTFOUND;
+    }
+
+    vector<int> users;
+    for (auto adjList : graph)
+    {
+        users.push_back(adjList.first);
+    }
+
+    bool hasAns = false, hasOpt = false;
+    int optId, optNumCommonNeighbor = 0;        // node that has common neighbors
+    int suboptId = INT32_MAX, suboptDegree = 0; // node that has no common neighbors
+    for (const auto &v : users)
+    {
+        if (graph[u].count(v) == 0)
+        {
+            // v is not connected to u
+            hasAns = true;
+            int numCommonNeighbor = 0;
+            for (const auto &vNeighbor : graph[v])
+            {
+                if (graph[u].count(vNeighbor) > 0)
+                {
+                    numCommonNeighbor++;
+                }
+            }
+
+            if (numCommonNeighbor == 0)
+            {
+                if (!hasOpt)
+                {
+                    // No nodes have common neighbors so far
+                    int degree = graph[v].size();
+                    if (degree > suboptDegree)
+                    {
+                        suboptId = v;
+                        suboptDegree = degree;
+                    }
+                    else if (degree == suboptDegree && v < suboptId)
+                    {
+                        suboptId = v;
+                    }
+                }
+            }
+            else
+            {
+                if (numCommonNeighbor > optNumCommonNeighbor)
+                {
+                    hasOpt = true;
+                    optNumCommonNeighbor = numCommonNeighbor;
+                    optId = v;
+                }
+                else if (numCommonNeighbor == optNumCommonNeighbor && v < optId)
+                {
+                    optId = v;
+                }
+            }
+        }
+    }
+
+    if (hasAns)
+    {
+        if (hasOpt)
+        {
+            return optId;
+        }
+        else
+        {
+            return suboptId;
+        }
+    }
+    else
+    {
+        return NONE;
+    }
+}
+
+void listenToMainServer(int listenSockfd,
+                        unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs,
+                        int talkSockfd, struct addrinfo *p)
 {
     struct sockaddr_storage their_addr;
     socklen_t addr_len = sizeof their_addr;
     int numbytes;
     //TODO: find out max length
     char buf[100];
-    if ((numbytes = recvfrom(sockfd, buf, 99, 0,
+    if ((numbytes = recvfrom(listenSockfd, buf, 99, 0,
                              (struct sockaddr *)&their_addr, &addr_len)) == -1)
     {
         perror("recvfrom");
         exit(1);
     }
     buf[numbytes] = '\0';
-    printf("%s", buf);
+
+    int commaIdx = 0;
+    while (buf[commaIdx] != ',')
+    {
+        commaIdx++;
+    }
+
+    string country(buf, commaIdx);
+    int u = atoi(buf + commaIdx + 1);
+    //cout << country << " " << userId;
+
+    int res = recommend((*countryGraphs)[country], u);
+    char *tosend = (char *)&res;
+    int size = sizeof(res);
+    if ((numbytes = sendto(talkSockfd, tosend, size, 0,
+                           p->ai_addr, p->ai_addrlen)) == -1)
+    {
+        perror("talker: sendto");
+        exit(1);
+    }
 }
 
 int main()
 {
     int listenSockfd = bootup();
-    unordered_map<string, unordered_map<int, unordered_set<int>>> adjLists;
-    constructGraph(&adjLists);
+    unordered_map<string, unordered_map<int, unordered_set<int>>> countryGraphs;
+    constructGraph(&countryGraphs);
 
     struct addrinfo *p;
-    int sendSockfd = initializeForMainServer(&p);
+    int talkSockfd = initializeForMainServer(&p);
 
-    sendCountryList(sendSockfd, adjLists, p);
+    sendCountryList(talkSockfd, &countryGraphs, p);
 
-    listen(listenSockfd);
+    listenToMainServer(listenSockfd, &countryGraphs, talkSockfd, p);
 
     //printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
     close(listenSockfd);
-    close(sendSockfd);
+    close(talkSockfd);
 
     return 0;
 }
