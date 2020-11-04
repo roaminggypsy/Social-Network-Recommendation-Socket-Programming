@@ -139,24 +139,27 @@ int main()
         char id[MAXDATASIZE];
         cin >> id;
 
+        cout << "here" << endl;
         if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
         {
             perror("send");
         }
+        cout << "there" << endl;
 
         if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
         {
             perror("send");
         }
+        cout << "this!" << endl;
 
         // send country and id to mainserver
-        printf("Client has sent User %s and country %s to Main Server using TCP", id, country);
+        printf("Client has sent User %s and country %s to Main Server using TCP\n", id, country);
 
         // receive recommendations
-        char res[sizeof(int) + 1];
+        char res[11];
         int numbytes;
 
-        if ((numbytes = recv(sockfd, res, sizeof(int), 0)) == -1)
+        if ((numbytes = recv(sockfd, res, 10, 0)) == -1)
         {
             perror("recv");
             exit(1);

@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <vector>
+#include <limits>
 
 using namespace std;
 
@@ -27,7 +28,7 @@ using namespace std;
 void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs)
 {
     ifstream dataFile;
-    dataFile.open("./testcases/testcase1/data1.txt");
+    dataFile.open("./testcases/testcase3/data1.txt");
     if (dataFile.is_open())
     {
         string line;
@@ -39,7 +40,6 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
                 stringstream stream(line);
                 int node;
                 stream >> node;
-                //cout << node << ": ";
 
                 unordered_set<int> neighbors;
                 (*countryGraphs)[country][node] = neighbors;
@@ -47,17 +47,13 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
                 while (stream >> neighbor)
                 {
                     (*countryGraphs)[country][node].insert(neighbor);
-                    //cout << neighbor << " ";
                 }
-
-                //cout << endl;
             }
             else
             {
                 country = line;
                 unordered_map<int, unordered_set<int>> adjList;
                 (*countryGraphs)[country] = adjList;
-                //cout << country << endl;
             }
         }
 
@@ -162,7 +158,6 @@ int initializeForMainServer(struct addrinfo **res)
     }
 
     *res = p;
-    cout << p << " " << *res << endl;
 
     //freeaddrinfo(servinfo);
 
@@ -182,13 +177,9 @@ void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unorde
             perror("talker: sendto");
             exit(1);
         }
-        else
-        {
-            cout << numbytes;
-        }
     }
 
-    if ((numbytes = sendto(sockfd, "E", 1, 0,
+    if ((numbytes = sendto(sockfd, "END", 3, 0,
                            p->ai_addr, p->ai_addrlen)) == -1)
     {
         perror("talker: sendto");
@@ -198,32 +189,32 @@ void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unorde
     cout << "The server A has sent a country list to Main Server" << endl;
 }
 
-int recommend(unordered_map<int, unordered_set<int>> graph, int u)
+int recommend(unordered_map<int, unordered_set<int>> *graph, int u)
 {
-    if (graph.count(u) == 0)
+    if (graph->count(u) == 0)
     {
         return NOTFOUND;
     }
 
     vector<int> users;
-    for (auto adjList : graph)
+    for (auto adjList : *graph)
     {
         users.push_back(adjList.first);
     }
 
     bool hasAns = false, hasOpt = false;
-    int optId, optNumCommonNeighbor = 0;        // node that has common neighbors
-    int suboptId = INT32_MAX, suboptDegree = 0; // node that has no common neighbors
+    int optId = numeric_limits<int>::max(), optNumCommonNeighbor = 0; // node that has common neighbors
+    int suboptId = numeric_limits<int>::max(), suboptDegree = 0;      // node that has no common neighbors
     for (const auto &v : users)
     {
-        if (graph[u].count(v) == 0)
+        if (v != u && (*graph)[u].count(v) == 0)
         {
             // v is not connected to u
             hasAns = true;
             int numCommonNeighbor = 0;
-            for (const auto &vNeighbor : graph[v])
+            for (const auto &vNeighbor : (*graph)[v])
             {
-                if (graph[u].count(vNeighbor) > 0)
+                if ((*graph)[u].count(vNeighbor) > 0)
                 {
                     numCommonNeighbor++;
                 }
@@ -234,7 +225,7 @@ int recommend(unordered_map<int, unordered_set<int>> graph, int u)
                 if (!hasOpt)
                 {
                     // No nodes have common neighbors so far
-                    int degree = graph[v].size();
+                    int degree = (*graph)[v].size();
                     if (degree > suboptDegree)
                     {
                         suboptId = v;
@@ -262,6 +253,7 @@ int recommend(unordered_map<int, unordered_set<int>> graph, int u)
         }
     }
 
+    cout << optId << " " << suboptId << endl;
     if (hasAns)
     {
         if (hasOpt)
@@ -295,25 +287,30 @@ void listenToMainServer(int listenSockfd,
         exit(1);
     }
     buf[numbytes] = '\0';
+    printf("%s\n", buf);
 
-    int commaIdx = 0;
-    while (buf[commaIdx] != ',')
+    if (string(buf) == "GETLIST")
     {
-        commaIdx++;
+        sendCountryList(talkSockfd, countryGraphs, p);
     }
-
-    string country(buf, commaIdx);
-    int u = atoi(buf + commaIdx + 1);
-    //cout << country << " " << userId;
-
-    int res = recommend((*countryGraphs)[country], u);
-    char *tosend = (char *)&res;
-    int size = sizeof(res);
-    if ((numbytes = sendto(talkSockfd, tosend, size, 0,
-                           p->ai_addr, p->ai_addrlen)) == -1)
+    else
     {
-        perror("talker: sendto");
-        exit(1);
+        int commaIdx = 0;
+        while (buf[commaIdx] != ',')
+        {
+            commaIdx++;
+        }
+
+        string country(buf, commaIdx);
+        int u = atoi(buf + commaIdx + 1);
+
+        string res = to_string(recommend(&(*countryGraphs)[country], u));
+        cout << "rec: " << res << endl;
+        if ((numbytes = sendto(talkSockfd, res.data(), res.size(), 0, p->ai_addr, p->ai_addrlen)) == -1)
+        {
+            perror("talker: sendto");
+            exit(1);
+        }
     }
 }
 
@@ -326,9 +323,12 @@ int main()
     struct addrinfo *p;
     int talkSockfd = initializeForMainServer(&p);
 
-    sendCountryList(talkSockfd, &countryGraphs, p);
+    //sendCountryList(talkSockfd, &countryGraphs, p);
 
-    listenToMainServer(listenSockfd, &countryGraphs, talkSockfd, p);
+    while (1)
+    {
+        listenToMainServer(listenSockfd, &countryGraphs, talkSockfd, p);
+    }
 
     //printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
     close(listenSockfd);

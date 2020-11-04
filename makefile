@@ -6,6 +6,9 @@ CC = g++
 # -Wall turns on most compiler warnings
 CFLAGS = -g -Wall -std=c++11
 
+all: client servermain serverA serverB
+.PHONY: all
+
 client: client.o
 	$(CC) $(CFLAGS) -o client client.o
 

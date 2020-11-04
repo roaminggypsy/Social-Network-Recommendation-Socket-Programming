@@ -16,14 +16,14 @@ num graphs                      10
 ----------------------------------------------------------------
 
 
-RECEIVED USER QUERY: 929273767 in cCb
+RECEIVED USER QUERY: 929273767 in cCb (A)
 >>>> recommend new friend 722879238 to user 929273767 (common neighbors = 30)
 
-RECEIVED USER QUERY: 162118937 in hSUMJxvw
+RECEIVED USER QUERY: 162118937 in hSUMJxvw (B)
 >>>> recommend new friend 313820140 to user 162118937 (common neighbors = 37)
 
-RECEIVED USER QUERY: 95542459 in SbvedgUc
+RECEIVED USER QUERY: 95542459 in SbvedgUc (A)
 >>>> recommend new friend 80727518 to user 95542459 (common neighbors = 15)
 
-RECEIVED USER QUERY: 468761846 in cYLEUu
+RECEIVED USER QUERY: 468761846 in cYLEUu (B)
 >>>> recommend new friend 272778285 to user 468761846 (common neighbors = 30)
