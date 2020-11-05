@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <string>
 #include <iostream>
+#include <list>
+#include <cstdlib>
 
 using namespace std;
 
@@ -20,12 +22,18 @@ using namespace std;
 #define BPORT "31321"
 #define PORTFORBACKEND "32321"
 #define PORTFORCLIENT "33321"
+
 #define BACKLOG 10
 #define MAXDATASIZE 100
 #define MAXCOUNTRYLENGTH 22 // Sever Num (0 or 1) + 20 letters + '\0
+
 #define COUNTRYNOTFOUND -3
 #define USERNOTFOUND -2
 #define NONE -1
+
+#define SERVERA 0
+#define SERVERB 1
+#define NUMSERVER 2
 
 void sigchld_handler(int s)
 {
@@ -125,6 +133,7 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                    unordered_map<string, int> *country_map,
                    int sockfdForBackend)
 {
+    int clientCount = 0;
     while (1)
     {
         struct sockaddr_storage their_addr; // connector's address info
@@ -134,11 +143,13 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
         {
             perror("accept");
         }
+        clientCount++;
 
         char s[INET6_ADDRSTRLEN];
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
         if (!fork())
         {
+            int clientNum = clientCount;
             // this is child process
             close(sockfdForClients); // child doesn't need the listener
             while (1)
@@ -150,31 +161,32 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                     perror("recv");
                 }
                 country[numbytes] = '\0';
-                printf("received %s\n", country);
                 char id[MAXDATASIZE];
                 if ((numbytes = recv(new_fd, id, MAXDATASIZE - 1, 0)) == -1)
                 {
                     perror("recv");
                 }
                 id[numbytes] = '\0';
-                printf("received %s\n", id);
-
-                // printf("servermain: received %s, %s\n", country, id);
+                printf("The Main server has recevied the request on User %s in %s from client %d using TCP over port %s\n",
+                       id, country, clientNum, PORTFORCLIENT);
 
                 unordered_map<string, int>::const_iterator got = (*country_map).find(string(country));
                 if (got == (*country_map).end())
                 {
-                    // printf("%s does not show up in server A&B", country);
+                    printf("%s does not show up in server A&B\n", country);
                     string res = to_string(COUNTRYNOTFOUND);
                     if (send(new_fd, res.data(), res.length(), 0) == -1)
                     {
                         perror("talker: sendto");
                         exit(1);
                     }
+                    printf("The Main Server has sent \"Country Name %s: Not found\" to client %d using TCP over port %s\n",
+                           country, clientNum, PORTFORCLIENT);
                 }
                 else
                 {
-                    // printf("%s shows up in server A/B", country);
+                    char server = got->second == SERVERA ? 'A' : 'B';
+                    printf("%s shows up in server %c", country, server);
                     string query = string(country) + "," + string(id);
                     cout << got->second << endl;
                     if ((numbytes = sendto(sockfds[got->second], query.data(), query.length(), 0,
@@ -183,6 +195,8 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                         perror("talker: sendto");
                         exit(1);
                     }
+                    printf("The Main Server has sent request from User %s to server %c using UDP over port %s\n",
+                           id, server, PORTFORBACKEND);
 
                     // receive res from backend
                     char res[11];
@@ -196,28 +210,31 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                     }
                     res[numbytes] = '\0';
                     int resVal = atoi(res);
-                    char server = got->second == 0 ? 'A' : 'B';
                     if (resVal == USERNOTFOUND)
                     {
-                        cout << "The Main server has received \"User ID: Not found\" from server " << endl;
+                        printf("The Main server has received \"User ID %s: Not found\" from server %c\n",
+                               id, server);
                         // send res back to client
                         if (send(new_fd, res, numbytes, 0) == -1)
                         {
                             perror("send");
                         }
-                        cout << "The Main server has sent error to client using TCP over port <>" << endl;
+                        cout << "The Main server has sent error to client using TCP over port "
+                             << PORTFORCLIENT << endl;
                     }
                     else
                     {
-                        cout << "The Main server has received searching result of User <> from sever " + server << endl;
-                        printf("%s\n", res);
-                        cout << resVal << endl;
+                        cout << "The Main server has received searching result of User "
+                             << (resVal == NONE ? "NONE" : res)
+                             << " from sever " + server << endl;
                         // send res back to client
                         if (send(new_fd, res, numbytes, 0) == -1)
                         {
                             perror("send");
                         }
-                        printf("The Main Server has sent search result to client using TCP over port <> \n");
+                        cout << "The Main Server has sent search result "
+                             << "to client " << clientNum
+                             << " using TCP over port" << PORTFORCLIENT << endl;
                     }
                 }
             }
@@ -228,7 +245,7 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
     }
 }
 
-int connectBackend()
+int initializeForListeningToBackend()
 {
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
@@ -318,23 +335,40 @@ void getCountryMap(unordered_map<string, int> *country_backend_mapping, int talk
             else
             {
                 (*country_backend_mapping)[string(buf + 1)] = *buf - '0';
-                cout << string(buf + 1) << " " << (*buf - '0') << endl;
             }
+        }
+        cout << "The Main server has received the country list from server "
+             << (i == SERVERA ? "A" : "B")
+             << " using UDP over port " << PORTFORBACKEND << endl;
+    }
+
+    list<string> countriesInA;
+    list<string> countriesInB;
+    for (auto it = (*country_backend_mapping).cbegin(); it != (*country_backend_mapping).end(); ++it)
+    {
+        if (it->second == SERVERA)
+        {
+            countriesInA.push_back(it->first);
+        }
+        else
+        {
+            countriesInB.push_back(it->first);
         }
     }
 
-    // printf("listener: got packet from %s\n",
-    //     inet_ntop(their_addr.ss_family,
-    //         get_in_addr((struct sockaddr *)&their_addr),
-    //         s, sizeof s));
-    // printf("listener: packet is %d bytes long\n", numbytes);
-    // buf[numbytes] = '\0';
-    // printf("listener: packet contains \"%c %s\"\n", *buf, buf + 1);
+    cout << "Server A" << endl;
+    for (auto it = countriesInA.cbegin(); it != countriesInA.end(); ++it)
+    {
+        cout << *it << endl;
+    }
 
-    // for (auto i : *country_backend_mapping)
-    // {
-    //     cout << i.first << ": " << i.second << endl;
-    // }
+    cout << endl;
+
+    cout << "Server B" << endl;
+    for (auto it = countriesInB.cbegin(); it != countriesInB.end(); ++it)
+    {
+        cout << *it << endl;
+    }
 }
 
 void initializeForTalkingToBackend(int sockfds[], struct addrinfo *addrs[])
@@ -409,31 +443,27 @@ void initializeForTalkingToBackend(int sockfds[], struct addrinfo *addrs[])
 
 int main(void)
 {
-    unordered_map<string, int> country_backend_mapping;
-    // ask backend sever A, B for country mapping
-    int listenToBackSockfd = connectBackend();
-    //getCountryMapping(listenToBackSockfd, &country_backend_mapping);
+    // Initialization
+    int listenToBackSockfd = initializeForListeningToBackend();
 
     int talkToBackSockfds[2];
     struct addrinfo *backAddrs[2];
     initializeForTalkingToBackend(talkToBackSockfds, backAddrs);
+
+    int listenToClientSockfd = initialize();
+
+    cout << "The Main server is up and running" << endl;
+
+    // Get <country, server> mapping
+    unordered_map<string, int> country_backend_mapping;
     getCountryMap(&country_backend_mapping, talkToBackSockfds, listenToBackSockfd, backAddrs);
 
-    // Establish TCP connection with clients
-    // Reference: Beej's Guide
-    // TODO: error checking
-    int listenToClientSockfd = initialize();
+    // Handle queries from clients
     handleClients(listenToClientSockfd, talkToBackSockfds, backAddrs, &country_backend_mapping, listenToBackSockfd);
 
-    // TODO: free all addrinfo
+    // Cleanup TODO: free all addrinfo and
     close(listenToBackSockfd);
     close(listenToClientSockfd);
 
     return 0;
-
-    // receive country name and user ID
-
-    // request backend server for recommendations
-
-    // case 1: country name or user ID not found
 }

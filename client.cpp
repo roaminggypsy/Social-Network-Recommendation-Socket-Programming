@@ -16,6 +16,10 @@ using namespace std;
 #define PORT "33321"
 #define MAXDATASIZE 100
 
+#define COUNTRYNOTFOUND -3
+#define USERNOTFOUND -2
+#define NONE -1
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -129,8 +133,10 @@ void receive()
 int main()
 {
     int sockfd = connect();
+    cout << "The client is up and running" << endl;
     do
     {
+        cout << "-----Start a new request-----" << endl;
         cout << "Enter country name: ";
         char country[MAXDATASIZE];
         cin >> country;
@@ -139,21 +145,17 @@ int main()
         char id[MAXDATASIZE];
         cin >> id;
 
-        cout << "here" << endl;
         if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
         {
             perror("send");
         }
-        cout << "there" << endl;
 
         if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
         {
             perror("send");
         }
-        cout << "this!" << endl;
-
-        // send country and id to mainserver
-        printf("Client has sent User %s and country %s to Main Server using TCP\n", id, country);
+        cout << "The client has sent User" << id << " and " << country
+             << "to Main Server using TCP" << endl;
 
         // receive recommendations
         char res[11];
@@ -167,13 +169,21 @@ int main()
 
         res[numbytes] = '\0';
 
-        printf("client: received '%s'\n", res);
-
-        //cout << country << " not found" << endl;
-        //cout << "User" << id << " not found" << endl;
-        //cout << "Client has received results from Main Server" << endl;
-        //cout << "RESULT"
-        //     << " is/are possible friend(s) of User" << id << " in " << country << endl;
+        int resVal = atoi(res);
+        if (resVal == COUNTRYNOTFOUND)
+        {
+            cout << country << " not found" << endl;
+        }
+        else if (resVal == USERNOTFOUND)
+        {
+            cout << "User" << id << " not found" << endl;
+        }
+        else
+        {
+            cout << "The client has received the result from Main Server:" << endl;
+            cout << "User" << resVal << " is a possible friend of User" << id
+                 << " in " << country << endl;
+        }
     } while (1);
     close(sockfd);
     return 0;
