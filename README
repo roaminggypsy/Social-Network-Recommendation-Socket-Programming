@@ -1,0 +1,118 @@
+Linjun Ouyang
+8963381321
+
+What you have done in the assignment:
+Simulate the social network recommendation (distributed) system
+where clients take (country, userId) as input, which is sent to main server via TCP.
+Main server can support multiple clients.
+Main server decides whether [country] exists, and forward query to corresponding backend server via UDP.
+Backend server generates recommendation based on common neighbors, and reply to main server by UDP.
+Main server forwards the reply to client, and client displays the result.
+Repeat this process until ctrl+c is pressed.
+
+Files:
+client: 
+1. take user input (country, id), send query to main server by TCP, 
+2. receive reply from main server and display reply
+main server:
+1. ask backend servers for (country, server) mapping.
+2. listen to client queries by TCP, check whether country exists.
+3. Forward query to backend servers by UDP, and receive result from backend
+serverA, serverB:
+1. process data files consisting of countries and users, represent it as graph (using adjacency list)
+2. listen to queries from main server, generates recommendation based on common neighbors,
+and reply back to main server through UDP
+makefile:
+commands to compile, run, and clean.
+
+message format:
+------
+Backend server A/B
+Booting up (Only while starting):
+The server A/B is up and running using UDP on port <server A/B port number>
+
+Sending the country list that contains in “data1/2.txt” to Main Server:
+The server A/B has sent a country list to Main Server
+
+For friends searching, upon receiving the input query: 
+The server A/B has received request for finding possiblefriends of User <user ID> in <Country Name>
+
+If we could not find this user ID in this country, send “not found” back to Main Server: 
+User <user ID> does not show up in <Country Name>
+The server A/B has sent “User <user ID> not found” to Main Server
+
+If we find this user ID in this country, searching possible friends for this user and send result(s) back to Main Server:
+The server A/B is searching possible friends for User <userID> ...
+Here are the results: User<user ID1>, User<user ID2>...
+The server A/B has sent the result(s) to Main Server
+------
+Main server:
+Booting up(only while starting): 
+The Main server is up and running.
+
+Upon receiving the country list from server A/B: 
+The Main server has received the country list from server A/B using UDP over port <Main server UDP port number>
+
+List the results of which country serverA/serverB is responsible for: 
+Server A
+<Country Name 1>
+<Country Name 2>
+
+Server B
+<Country Name 1>
+<Country Name 2>
+
+Upon receiving the input from the client: 
+The Main server has received the request on User <userID> in <Country Name> from client<client ID> using TCP over port <Main server TCP port number>
+
+If the input country name could not be found, send the error message to the client: 
+<Country Name> does not show up in server A&B
+The Main Server has sent “Country Name: Not found” to the client using TCP over port <Main server TCP portnumber>
+
+If the input country name could be <Country Name> shows up in server A/B found, decide which server contains related information 
+about the input userID and send a request to serverA/B:
+<Country Name> shows up in server A/B
+The Main Server has sent request from User <user ID> to server A/B using UDP over port <Main server UDP port number>
+
+If we could find this user ID in the graph, 
+the Main Server will receive the searching results from serverA/B and send them to client1/2:
+The Main server has received searching result of User <userID> from server<A/B>
+The Main Server has sent searching result(s) to client using TCP over port <Main Server TCP port number>
+
+If we could not find this user ID in the graph, send the error message back to client:
+The Main server has received “User ID: Not found” from server <A/B>
+The Main Server has sent error to client using TCP over <Main Server UDP port number>
+------
+Client
+Booting up(only while starting):
+The client is up and running
+
+asking for input:
+Please enter the User ID:
+Please enter the Country Name:
+
+After sending User ID to Main Server:
+The client has sent User<user ID> and <Country Name> to Main Server using TCP
+
+If input country not found:
+<Country Name> not found
+
+If input User ID not found:
+User<user ID> not found
+
+If input User ID and country can be found:
+The client has received results from Main Server:
+User<user ID1>, User<user ID2> is/are possible friend(s)of User<user ID> in <Country Name>
+------
+
+idiosyncrasy: none
+
+Reused code:
+https://beej.us/guide/bgnet/html/
+code in Client-Server Background:
+A Simple Stream Server
+A Simple Stream Client
+Datagram Sockets
+
+
+

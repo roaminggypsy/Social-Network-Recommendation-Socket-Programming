@@ -6,32 +6,24 @@ CC = g++
 # -Wall turns on most compiler warnings
 CFLAGS = -g -Wall -std=c++11
 
-all: client servermain serverA serverB
-.PHONY: all
+all: client.cpp servermain.cpp serverA.cpp serverB.cpp
+	$(CC) $(CFLAGS) -o client client.cpp
+	$(CC) $(CFLAGS) -o serverA serverA.cpp
+	$(CC) $(CFLAGS) -o serverB serverB.cpp
+	$(CC) $(CFLAGS) -o servermain servermain.cpp
 
-client: client.o
-	$(CC) $(CFLAGS) -o client client.o
 
-client.o: client.cpp
-	$(CC) $(CFLAGS) -c client.cpp
+.PHONY: serverA
+serverA: 
+	./serverA
 
-servermain: servermain.o
-	$(CC) $(CFLAGS) -o servermain servermain.o
+.PHONY: serverB
+serverB: 
+	./serverB
 
-servermain.o: servermain.cpp
-	$(CC) $(CFLAGS) -c servermain.cpp
-
-serverA: serverA.o
-	$(CC) $(CFLAGS) -o serverA serverA.o
-
-serverA.o: serverA.cpp
-	$(CC) $(CFLAGS) -c serverA.cpp
-
-serverB: serverB.o
-	$(CC) $(CFLAGS) -o serverB serverB.o
-
-serverB.o: serverB.cpp
-	$(CC) $(CFLAGS) -c serverB.cpp
+.PHONY: mainserver
+mainserver: 
+	./servermain
 
 clean:
 	$(RM) client servermain serverA serverB *.o *~

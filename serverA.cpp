@@ -26,7 +26,7 @@ using namespace std;
 #define NONE -1
 #define SERVER 'A'
 
-void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs)
+void constructGraph(unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs)
 {
     ifstream dataFile;
     dataFile.open("./testcases/testcase3/data1.txt");
@@ -36,15 +36,17 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
         string country;
         while (getline(dataFile, line))
         {
-            if (isdigit(line.at(0)))
+            stringstream stream(line);
+            string first;
+            stream >> first;
+            if (isdigit(first.at(0)))
             {
                 stringstream stream(line);
-                int node;
-                stream >> node;
+                int32_t node = atoi(first.data());
 
-                unordered_set<int> neighbors;
+                unordered_set<int32_t> neighbors;
                 (*countryGraphs)[country][node] = neighbors;
-                int neighbor;
+                int32_t neighbor;
                 while (stream >> neighbor)
                 {
                     (*countryGraphs)[country][node].insert(neighbor);
@@ -52,8 +54,8 @@ void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>
             }
             else
             {
-                country = line;
-                unordered_map<int, unordered_set<int>> adjList;
+                country = first;
+                unordered_map<int32_t, unordered_set<int32_t>> adjList;
                 (*countryGraphs)[country] = adjList;
             }
         }
@@ -164,7 +166,7 @@ int initializeForMainServer(struct addrinfo **res)
     return sockfd;
 }
 
-void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs, struct addrinfo *p)
+void sendCountryList(int sockfd, unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs, struct addrinfo *p)
 {
     cout << p;
     int numbytes;
@@ -189,7 +191,7 @@ void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unorde
     cout << "The server " << SERVER << " has sent a country list to Main Server" << endl;
 }
 
-int recommend(unordered_map<int, unordered_set<int>> *graph, int u, string country)
+int32_t recommend(unordered_map<int32_t, unordered_set<int32_t>> *graph, int32_t u, string country)
 {
     if (graph->count(u) == 0)
     {
@@ -198,15 +200,15 @@ int recommend(unordered_map<int, unordered_set<int>> *graph, int u, string count
     }
 
     cout << "The server " << SERVER << " is searching possible friends for User " << u << " ..." << endl;
-    vector<int> users;
+    vector<int32_t> users;
     for (auto adjList : *graph)
     {
         users.push_back(adjList.first);
     }
 
     bool hasAns = false, hasOpt = false;
-    int optId = numeric_limits<int>::max(), optNumCommonNeighbor = 0; // node that has common neighbors
-    int suboptId = numeric_limits<int>::max(), suboptDegree = 0;      // node that has no common neighbors
+    int32_t optId = INT32_MAX, optNumCommonNeighbor = 0; // node that has common neighbors
+    int32_t suboptId = INT32_MAX, suboptDegree = 0;      // node that has no common neighbors
     for (const auto &v : users)
     {
         if (v != u && (*graph)[u].count(v) == 0)
@@ -277,7 +279,7 @@ int recommend(unordered_map<int, unordered_set<int>> *graph, int u, string count
 }
 
 void listenToMainServer(int listenSockfd,
-                        unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs,
+                        unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs,
                         int talkSockfd, struct addrinfo *p)
 {
     struct sockaddr_storage their_addr;
