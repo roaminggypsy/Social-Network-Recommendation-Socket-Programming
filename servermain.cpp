@@ -37,6 +37,7 @@ using namespace std;
 
 void sigchld_handler(int s)
 {
+    // from Beej's guide
     // waitpid() might overwrite errno, so we save and restore it
     int saved_errno = errno;
 
@@ -46,6 +47,7 @@ void sigchld_handler(int s)
     errno = saved_errno;
 }
 
+// get sockaddr, IPv4 or IPv6 (from Beej's guide)
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET)
@@ -56,8 +58,9 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int initialize()
+int initializeForListeningToClient()
 {
+    // this method has code from Beej's guide
     struct addrinfo hints;
 
     memset(&hints, 0, sizeof hints);
@@ -133,6 +136,7 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                    unordered_map<string, int> *country_map,
                    int sockfdForBackend)
 {
+    // this method has code from Beej's guide
     int clientCount = 0;
     while (1)
     {
@@ -149,8 +153,8 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
         if (!fork())
         {
-            int clientNum = clientCount;
             // this is child process
+            int clientNum = clientCount;
             close(sockfdForClients); // child doesn't need the listener
             while (1)
             {
@@ -167,8 +171,9 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                     perror("recv");
                 }
                 id[numbytes] = '\0';
+                cout << endl;
                 cout << "The Main server has recevied the request on User " << id << " in " << country
-                     << "from client " << clientNum << " using TCP over port " << PORTFORCLIENT << endl;
+                     << " from client " << clientNum << " using TCP over port " << PORTFORCLIENT << endl;
 
                 unordered_map<string, int>::const_iterator got = (*country_map).find(string(country));
                 if (got == (*country_map).end())
@@ -246,6 +251,7 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
 
 int initializeForListeningToBackend()
 {
+    // this method has code from Beej's guide
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int rv;
@@ -296,6 +302,7 @@ int initializeForListeningToBackend()
 void getCountryMap(unordered_map<string, int> *country_backend_mapping, int talkToBackfds[], int listenToBackfd,
                    struct addrinfo *backAddrs[])
 {
+    // this method has code from Beej's guide
     // request
     int numbytes = 0;
     string request = "GETLIST";
@@ -357,7 +364,6 @@ void getCountryMap(unordered_map<string, int> *country_backend_mapping, int talk
     {
         cout << *it << endl;
     }
-
     cout << endl;
 
     cout << "Server B" << endl;
@@ -365,10 +371,12 @@ void getCountryMap(unordered_map<string, int> *country_backend_mapping, int talk
     {
         cout << *it << endl;
     }
+    cout << endl;
 }
 
 void initializeForTalkingToBackend(int sockfds[], struct addrinfo *addrs[])
 {
+    // this method has code from Beej's guide
     string ports[2] = {APORT, BPORT};
     for (int i = 0; i < 2; ++i)
     {
@@ -408,33 +416,6 @@ void initializeForTalkingToBackend(int sockfds[], struct addrinfo *addrs[])
         sockfds[i] = sockfd;
         addrs[i] = p;
     }
-
-    // for (auto i : adjLists)
-    // {
-    //     string msg = to_string(2) + i.first;
-    //     if ((numbytes = sendto(sockfd, msg.data(), msg.length(), 0,
-    //                            p->ai_addr, p->ai_addrlen)) == -1)
-    //     {
-    //         perror("talker: sendto");
-    //         exit(1);
-    //     }
-    //     else
-    //     {
-    //         cout << numbytes;
-    //     }
-    // }
-
-    // if ((numbytes = sendto(sockfd, "E", 1, 0,
-    //                        p->ai_addr, p->ai_addrlen)) == -1)
-    // {
-    //     perror("talker: sendto");
-    //     exit(1);
-    // }
-
-    // freeaddrinfo(servinfo);
-
-    // //printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
-    // close(sockfd);
 }
 
 int main(void)
@@ -446,7 +427,7 @@ int main(void)
     struct addrinfo *backAddrs[2];
     initializeForTalkingToBackend(talkToBackSockfds, backAddrs);
 
-    int listenToClientSockfd = initialize();
+    int listenToClientSockfd = initializeForListeningToClient();
 
     cout << "The Main server is up and running" << endl;
 
@@ -457,7 +438,7 @@ int main(void)
     // Handle queries from clients
     handleClients(listenToClientSockfd, talkToBackSockfds, backAddrs, &country_backend_mapping, listenToBackSockfd);
 
-    // Cleanup TODO: free all addrinfo and
+    // Cleanup
     close(listenToBackSockfd);
     close(listenToClientSockfd);
 

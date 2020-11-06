@@ -20,7 +20,7 @@ using namespace std;
 #define USERNOTFOUND -2
 #define NONE -1
 
-// get sockaddr, IPv4 or IPv6:
+// get sockaddr, IPv4 or IPv6 (from Beej's guide)
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET)
@@ -31,32 +31,9 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-void query(int sockfd)
-{
-    //     cout << "Enter country name: ";
-    //     char country[MAXDATASIZE];
-    //     cin >> country;
-
-    //     cout << "Enter user ID: ";
-    //     char id[MAXDATASIZE];
-    //     cin >> id;
-
-    //     if (send(sockfd, country, MAXDATASIZE - 1, 0) == -1)
-    //     {
-    //         perror("send");
-    //     }
-
-    //     if (send(sockfd, id, MAXDATASIZE - 1, 0) == -1)
-    //     {
-    //         perror("send");
-    //     }
-
-    //     // send country and id to mainserver
-    //     printf("Client has sent User %s and country %s to Main Server using TCP", id, country);
-}
-
 int connect()
 {
+    // This method has code from Beej's guide
     // load up address structs
     struct addrinfo hints;
 
@@ -107,31 +84,9 @@ int connect()
     return sockfd;
 }
 
-void receive()
-{
-    // // receive recommendations
-    // char res[sizeof(int) + 1];
-    // int numbytes;
-
-    // if ((numbytes = recv(sockfd, res, sizeof(int), 0)) == -1)
-    // {
-    //     perror("recv");
-    //     exit(1);
-    // }
-
-    // res[numbytes] = '\0';
-
-    // printf("client: received '%s'\n", buf);
-
-    // cout << country << " not found" << endl;
-    // cout << "User" << id << " not found" << endl;
-    // cout << "Client has received results from Main Server" << endl;
-    // cout << "RESULT"
-    //      << " is/are possible friend(s) of User" << id << " in " << country << endl;
-}
-
 int main()
 {
+    // this method has code from Beej's guide
     int sockfd = connect();
     cout << "The client is up and running" << endl;
     do
@@ -181,7 +136,16 @@ int main()
         else
         {
             cout << "The client has received the result from Main Server:" << endl;
-            cout << "User " << resVal << " is a possible friend of User " << id
+            cout << "User ";
+            if (resVal == NONE)
+            {
+                cout << "None";
+            }
+            else
+            {
+                cout << resVal;
+            }
+            cout << " is a possible friend of User " << id
                  << " in " << country << endl;
         }
     } while (1);

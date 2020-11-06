@@ -29,7 +29,7 @@ using namespace std;
 void constructGraph(unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs)
 {
     ifstream dataFile;
-    dataFile.open("./testcases/testcase3/data1.txt");
+    dataFile.open("./data1.txt");
     if (dataFile.is_open())
     {
         string line;
@@ -59,14 +59,6 @@ void constructGraph(unordered_map<string, unordered_map<int32_t, unordered_set<i
                 (*countryGraphs)[country] = adjList;
             }
         }
-
-        // for (auto i : countryGraphs[country]) {
-        //     cout << i.first << ": ";
-        //     for (auto j : countryGraphs[country][i.first]) {
-        //         cout << j << "  ";
-        //     }
-        //     cout << endl;
-        // }
         dataFile.close();
     }
     else
@@ -77,6 +69,7 @@ void constructGraph(unordered_map<string, unordered_map<int32_t, unordered_set<i
 
 int bootup()
 {
+    // This method has code from Beej's guide
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int rv;
@@ -125,6 +118,7 @@ int bootup()
 // Initialize socket for sending to main server
 int initializeForMainServer(struct addrinfo **res)
 {
+    // This method has code from Beej's guide
     int sockfd;
     struct addrinfo hints, *servinfo;
     int rv;
@@ -168,7 +162,7 @@ int initializeForMainServer(struct addrinfo **res)
 
 void sendCountryList(int sockfd, unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs, struct addrinfo *p)
 {
-    cout << p;
+    // This method has code from Beej's guide
     int numbytes;
     for (auto i : *countryGraphs)
     {
@@ -282,6 +276,7 @@ void listenToMainServer(int listenSockfd,
                         unordered_map<string, unordered_map<int32_t, unordered_set<int32_t>>> *countryGraphs,
                         int talkSockfd, struct addrinfo *p)
 {
+    // This method has code from Beej's guide
     struct sockaddr_storage their_addr;
     socklen_t addr_len = sizeof their_addr;
     int numbytes;
@@ -309,6 +304,7 @@ void listenToMainServer(int listenSockfd,
 
         string country(buf, commaIdx);
         int u = atoi(buf + commaIdx + 1);
+        cout << endl;
         cout << "The server " << SERVER << " has received request for finding possible friends "
              << "of User " << u << " in " << country << endl;
 
@@ -319,7 +315,7 @@ void listenToMainServer(int listenSockfd,
             perror("talker: sendto");
             exit(1);
         }
-        cout << "The server " << SERVER << "has sent ";
+        cout << "The server " << SERVER << " has sent ";
         if (resVal == USERNOTFOUND)
         {
             cout << "\"User " << u << " not found\" ";
@@ -328,7 +324,7 @@ void listenToMainServer(int listenSockfd,
         {
             cout << "the result ";
         }
-        cout << "to Main Server";
+        cout << "to Main Server" << endl;
     }
 }
 
