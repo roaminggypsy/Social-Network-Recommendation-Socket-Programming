@@ -167,36 +167,35 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                     perror("recv");
                 }
                 id[numbytes] = '\0';
-                printf("The Main server has recevied the request on User %s in %s from client %d using TCP over port %s\n",
-                       id, country, clientNum, PORTFORCLIENT);
+                cout << "The Main server has recevied the request on User " << id << " in " << country
+                     << "from client " << clientNum << " using TCP over port " << PORTFORCLIENT << endl;
 
                 unordered_map<string, int>::const_iterator got = (*country_map).find(string(country));
                 if (got == (*country_map).end())
                 {
-                    printf("%s does not show up in server A&B\n", country);
+                    cout << country << " does not show up in server A&B" << endl;
                     string res = to_string(COUNTRYNOTFOUND);
                     if (send(new_fd, res.data(), res.length(), 0) == -1)
                     {
                         perror("talker: sendto");
                         exit(1);
                     }
-                    printf("The Main Server has sent \"Country Name %s: Not found\" to client %d using TCP over port %s\n",
-                           country, clientNum, PORTFORCLIENT);
+                    cout << "The Main Server has sent \"Country Name " << country << ": Not found\""
+                         << " to client " << clientNum << " using TCP over port " << PORTFORCLIENT << endl;
                 }
                 else
                 {
-                    char server = got->second == SERVERA ? 'A' : 'B';
-                    printf("%s shows up in server %c", country, server);
+                    string server = ((got->second) == SERVERA ? "A" : "B");
+                    cout << country << " shows up in server " << server << endl;
                     string query = string(country) + "," + string(id);
-                    cout << got->second << endl;
                     if ((numbytes = sendto(sockfds[got->second], query.data(), query.length(), 0,
                                            addrs[got->second]->ai_addr, addrs[got->second]->ai_addrlen)) == -1)
                     {
                         perror("talker: sendto");
                         exit(1);
                     }
-                    printf("The Main Server has sent request from User %s to server %c using UDP over port %s\n",
-                           id, server, PORTFORBACKEND);
+                    cout << "The Main Server has sent request from User " << id << " to server " << server
+                         << " using UDP over port " << PORTFORBACKEND << endl;
 
                     // receive res from backend
                     char res[11];
@@ -212,8 +211,8 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                     int resVal = atoi(res);
                     if (resVal == USERNOTFOUND)
                     {
-                        printf("The Main server has received \"User ID %s: Not found\" from server %c\n",
-                               id, server);
+                        cout << "The Main server has received \"User ID " << id << ": Not found\""
+                             << "from server " << server << endl;
                         // send res back to client
                         if (send(new_fd, res, numbytes, 0) == -1)
                         {
@@ -234,7 +233,7 @@ void handleClients(int sockfdForClients, int sockfds[], struct addrinfo *addrs[]
                         }
                         cout << "The Main Server has sent search result "
                              << "to client " << clientNum
-                             << " using TCP over port" << PORTFORCLIENT << endl;
+                             << " using TCP over port " << PORTFORCLIENT << endl;
                     }
                 }
             }
@@ -291,9 +290,6 @@ int initializeForListeningToBackend()
     }
 
     freeaddrinfo(servinfo);
-
-    printf("listener: waiting to recvfrom...\n");
-
     return sockfd;
 }
 

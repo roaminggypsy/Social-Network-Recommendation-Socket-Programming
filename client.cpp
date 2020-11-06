@@ -154,8 +154,8 @@ int main()
         {
             perror("send");
         }
-        cout << "The client has sent User" << id << " and " << country
-             << "to Main Server using TCP" << endl;
+        cout << "The client has sent User " << id << " and " << country
+             << " to Main Server using TCP" << endl;
 
         // receive recommendations
         char res[11];
@@ -176,12 +176,12 @@ int main()
         }
         else if (resVal == USERNOTFOUND)
         {
-            cout << "User" << id << " not found" << endl;
+            cout << "User " << id << " not found" << endl;
         }
         else
         {
             cout << "The client has received the result from Main Server:" << endl;
-            cout << "User" << resVal << " is a possible friend of User" << id
+            cout << "User " << resVal << " is a possible friend of User " << id
                  << " in " << country << endl;
         }
     } while (1);

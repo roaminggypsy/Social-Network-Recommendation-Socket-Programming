@@ -22,8 +22,9 @@ using namespace std;
 
 #define MAINSERVERPORT "32321"
 #define APORT "30321"
-#define NOTFOUND -2
+#define USERNOTFOUND -2
 #define NONE -1
+#define SERVER 'A'
 
 void constructGraph(unordered_map<string, unordered_map<int, unordered_set<int>>> *countryGraphs)
 {
@@ -116,7 +117,6 @@ int bootup()
     }
 
     freeaddrinfo(servinfo);
-    cout << "The server A is up and running using UDP on port 30321" << endl;
     return sockfd;
 }
 
@@ -186,16 +186,18 @@ void sendCountryList(int sockfd, unordered_map<string, unordered_map<int, unorde
         exit(1);
     }
 
-    cout << "The server A has sent a country list to Main Server" << endl;
+    cout << "The server " << SERVER << " has sent a country list to Main Server" << endl;
 }
 
-int recommend(unordered_map<int, unordered_set<int>> *graph, int u)
+int recommend(unordered_map<int, unordered_set<int>> *graph, int u, string country)
 {
     if (graph->count(u) == 0)
     {
-        return NOTFOUND;
+        cout << "User " << u << " does not show up in " << country << endl;
+        return USERNOTFOUND;
     }
 
+    cout << "The server " << SERVER << " is searching possible friends for User " << u << " ..." << endl;
     vector<int> users;
     for (auto adjList : *graph)
     {
@@ -253,20 +255,23 @@ int recommend(unordered_map<int, unordered_set<int>> *graph, int u)
         }
     }
 
-    cout << optId << " " << suboptId << endl;
+    cout << "Here are the result: User ";
     if (hasAns)
     {
         if (hasOpt)
         {
+            cout << optId << endl;
             return optId;
         }
         else
         {
+            cout << suboptId << endl;
             return suboptId;
         }
     }
     else
     {
+        cout << "NONE" << endl;
         return NONE;
     }
 }
@@ -287,7 +292,6 @@ void listenToMainServer(int listenSockfd,
         exit(1);
     }
     buf[numbytes] = '\0';
-    printf("%s\n", buf);
 
     if (string(buf) == "GETLIST")
     {
@@ -303,14 +307,26 @@ void listenToMainServer(int listenSockfd,
 
         string country(buf, commaIdx);
         int u = atoi(buf + commaIdx + 1);
+        cout << "The server " << SERVER << " has received request for finding possible friends "
+             << "of User " << u << " in " << country << endl;
 
-        string res = to_string(recommend(&(*countryGraphs)[country], u));
-        cout << "rec: " << res << endl;
-        if ((numbytes = sendto(talkSockfd, res.data(), res.size(), 0, p->ai_addr, p->ai_addrlen)) == -1)
+        int resVal = recommend(&(*countryGraphs)[country], u, country);
+        string resStr = to_string(resVal);
+        if ((numbytes = sendto(talkSockfd, resStr.data(), resStr.size(), 0, p->ai_addr, p->ai_addrlen)) == -1)
         {
             perror("talker: sendto");
             exit(1);
         }
+        cout << "The server " << SERVER << "has sent ";
+        if (resVal == USERNOTFOUND)
+        {
+            cout << "\"User " << u << " not found\" ";
+        }
+        else
+        {
+            cout << "the result ";
+        }
+        cout << "to Main Server";
     }
 }
 
@@ -323,14 +339,13 @@ int main()
     struct addrinfo *p;
     int talkSockfd = initializeForMainServer(&p);
 
-    //sendCountryList(talkSockfd, &countryGraphs, p);
+    cout << "The server " << SERVER << " is up and running using UDP on port " << APORT << endl;
 
     while (1)
     {
         listenToMainServer(listenSockfd, &countryGraphs, talkSockfd, p);
     }
 
-    //printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
     close(listenSockfd);
     close(talkSockfd);
 
